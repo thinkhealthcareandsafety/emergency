@@ -33,6 +33,7 @@ export function requireAdmin(req, res, next) {
 
 /** Wall screens use a read-only display key (?key=...); signed-in admins can view too. */
 export function requireDisplay(req, res, next) {
+  if (config.displayPublic) return next();
   const key = req.query.key || req.headers['x-display-key'];
   if (key && safeEqual(key, config.displayKey)) return next();
   const user = userFromRequest(req);

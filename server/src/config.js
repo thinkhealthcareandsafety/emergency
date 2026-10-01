@@ -22,6 +22,8 @@ export const config = {
   adminUsername: process.env.ADMIN_USERNAME || 'admin',
   adminPassword: process.env.ADMIN_PASSWORD || 'admin123',
   displayKey: process.env.DISPLAY_KEY || 'display-dev-key',
+  // Demo/kiosk: let anyone open the wall screen without ?key=. Admin and webhook stay protected.
+  displayPublic: bool(process.env.DISPLAY_PUBLIC, false),
   ingestApiKey: process.env.INGEST_API_KEY || 'ingest-dev-key',
   corsOrigin: process.env.CORS_ORIGIN || '*',
 

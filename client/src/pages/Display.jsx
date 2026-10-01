@@ -14,7 +14,7 @@ const PAGE_SECONDS = 10;
  * Visual language follows Apple Home: available people are bright tiles, unavailable ones are dim.
  */
 export default function Display() {
-  const { code } = useParams();
+  const { code = 'MAIN' } = useParams(); // the root URL shows the main property
   const [params] = useSearchParams();
   const urlKey = params.get('key');
   const [key, setKey] = useState(() => urlKey || displayKey.get() || '');

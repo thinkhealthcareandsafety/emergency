@@ -2,7 +2,6 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './styles.css';
-import Home from './pages/Home.jsx';
 import Display from './pages/Display.jsx';
 import Login from './pages/Login.jsx';
 import Admin from './pages/Admin.jsx';
@@ -12,7 +11,7 @@ createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Display />} />
         <Route path="/display/:code" element={<Display />} />
         <Route path="/punch/:code" element={<Punch />} />
         <Route path="/login" element={<Login />} />
