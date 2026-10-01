@@ -1,0 +1,5 @@
+# Automatic HTTPS (Let's Encrypt) in front of the app. Point your domain's DNS A record at the server first.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy app:4000
+}

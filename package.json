@@ -1,0 +1,15 @@
+{
+  "name": "ert-live",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Live Emergency Response Team availability board driven by HONO HR attendance",
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "demo": "npm run build && npm start",
+    "demo:public": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-public-demo.ps1"
+  }
+}

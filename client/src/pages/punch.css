@@ -1,0 +1,120 @@
+/* Phone punch page — reuses the .tv tokens and materials from display.css at phone scale. */
+
+.tv.punch {
+  --u: 16px;
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: visible;
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+}
+.tv.punch .tv-ambient { position: fixed; }
+
+.p-wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.p-center { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+.p-center h1 { margin: 6px 0 0; font-size: 22px; letter-spacing: -0.02em; }
+.p-center p { margin: 0; color: var(--label-2); line-height: 1.45; }
+.p-big-icon { width: 40px !important; height: 40px !important; }
+.p-big-icon.warn { color: var(--orange); }
+
+.p-head { display: flex; align-items: center; gap: 12px; padding: 6px 2px 4px; }
+.p-head .brand-mark { width: 46px; height: 46px; border-radius: 13px; }
+.p-hotel { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+.p-sub { margin-top: 2px; font-size: 14px; color: var(--label-2); font-weight: 500; }
+
+.p-card { padding: 18px; border-radius: 22px; }
+
+.p-status { display: flex; align-items: center; gap: 14px; transition: background 0.5s var(--ease), border-color 0.5s var(--ease); }
+.p-status-icon {
+  flex: none;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 24px;
+  background: var(--fill-2);
+  color: var(--label-2);
+  transition: all 0.5s var(--ease);
+}
+.p-status.on { border-color: rgba(48, 209, 88, 0.45); background: linear-gradient(135deg, rgba(48, 209, 88, 0.18), rgba(255, 255, 255, 0.03)); }
+.p-status.on .p-status-icon { background: var(--green); color: #fff; box-shadow: 0 6px 22px rgba(48, 209, 88, 0.45); }
+.p-status-title { font-size: 20px; font-weight: 700; letter-spacing: -0.025em; }
+.p-status-sub { margin-top: 2px; font-size: 14px; color: var(--label-2); }
+
+.p-flash {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(48, 209, 88, 0.16);
+  color: #7ee29a;
+  font-weight: 600;
+  font-size: 15px;
+  animation: rise 0.5s var(--ease) both;
+}
+
+.p-field { display: flex; flex-direction: column; gap: 8px; }
+.p-field + .p-field { margin-top: 18px; }
+.p-field > span { font-size: 13px; font-weight: 600; color: var(--label-2); }
+.p-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--hair-2);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--label);
+  font: inherit;
+  font-size: 17px; /* ≥16px stops iOS zooming on focus */
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.p-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.25); }
+
+.p-roles { display: flex; flex-wrap: wrap; gap: 8px; }
+.p-role {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--hair-2);
+  background: var(--fill);
+  color: var(--label-2);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.p-role .icon { width: 16px; height: 16px; color: var(--role); }
+.p-role.on {
+  border-color: var(--role);
+  background: color-mix(in srgb, var(--role) 22%, transparent);
+  color: var(--label);
+}
+.p-role:active { transform: scale(0.96); }
+
+.p-error { padding: 12px 16px; border-radius: 14px; background: rgba(255, 69, 58, 0.16); color: #ff8a80; font-size: 15px; }
+
+.p-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 2px; }
+.p-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 17px 12px;
+  border: 0;
+  border-radius: 18px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease), opacity 0.2s, filter 0.2s;
+}
+.p-btn .icon { width: 20px; height: 20px; }
+.p-btn.in { background: var(--green); color: #00260d; box-shadow: 0 10px 28px rgba(48, 209, 88, 0.35); }
+.p-btn.out { background: var(--fill-2); color: var(--label); border: 1px solid var(--hair-2); }
+.p-btn:active:not(:disabled) { transform: scale(0.97); }
+.p-btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+
+.p-foot { margin: 6px 4px 0; font-size: 12.5px; line-height: 1.45; color: var(--label-3); text-align: center; }
