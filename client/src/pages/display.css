@@ -67,6 +67,11 @@ td { padding: calc(var(--u) * 0.75) 0; border-top: 1px solid var(--hair); vertic
 td.muted { color: var(--label-2); }
 td.mono { font-variant-numeric: tabular-nums; color: var(--label-2); }
 .who { display: inline-flex; align-items: center; gap: 0.7em; font-weight: 550; font-size: calc(var(--u) * 1.1); }
+.who-text { display: flex; flex-direction: column; gap: 0.15em; }
+.who-status { font-size: 0.78em; font-weight: 500; color: var(--label-3); }
+.who-status.available { color: var(--green); }
+.who-status.stale { color: var(--orange); }
+tr.off .who-name { color: var(--label-2); }
 tr.off .who { color: var(--label-2); font-weight: 500; }
 .dot { display: inline-block; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--label-3); flex: none; }
 .dot.available { background: var(--green); }

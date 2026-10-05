@@ -10,6 +10,7 @@ import './display.css';
 
 const ROTATE_MS = 12_000;
 const RESUME_MS = 60_000;
+const STATUS = { available: 'Available', stale: 'Punch-out missing' };
 
 /** Wall screen: one tab per team, a table of its members, and a QR per team to punch in. */
 export default function Display() {
@@ -122,7 +123,10 @@ export default function Display() {
                     <td>
                       <span className="who">
                         <i className={`dot ${m.state}`} />
-                        {m.name}
+                        <span className="who-text">
+                          <span className="who-name">{m.name}</span>
+                          <span className={`who-status ${m.state}`}>{STATUS[m.state] || 'Not available'}</span>
+                        </span>
                       </span>
                     </td>
                     <td className="muted">{m.department || '—'}</td>
@@ -148,7 +152,7 @@ export default function Display() {
               <i className="dot stale" /> Punch-out missing
             </span>
             <span>
-              <i className="dot" /> Not on site
+              <i className="dot" /> Not available
             </span>
           </div>
         </section>
