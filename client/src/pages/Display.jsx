@@ -120,7 +120,7 @@ export default function Display() {
               <tbody>
                 {rows.map((m) => (
                   <tr key={m.empCode} className={m.state === 'available' ? '' : 'off'}>
-                    <td>
+                    <td data-label="Name">
                       <span className="who">
                         <i className={`dot ${m.state}`} />
                         <span className="who-text">
@@ -129,9 +129,9 @@ export default function Display() {
                         </span>
                       </span>
                     </td>
-                    <td className="muted">{m.department || '—'}</td>
-                    <td className="mono">{m.phone || '—'}</td>
-                    <td>{m.ertRoles.filter((r) => team.roles.includes(r)).map((r) => roleLabel[r] || r).join(', ')}</td>
+                    <td className="muted" data-label="Department">{m.department || '—'}</td>
+                    <td className="mono" data-label="Mobile number">{m.phone || '—'}</td>
+                    <td data-label="Role">{m.ertRoles.filter((r) => team.roles.includes(r)).map((r) => roleLabel[r] || r).join(', ')}</td>
                   </tr>
                 ))}
                 {!rows.length && (

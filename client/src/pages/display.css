@@ -131,13 +131,16 @@ tr.off .who { color: var(--label-2); font-weight: 500; }
 
   thead { display: none; }
   table, tbody { display: block; }
-  tr { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; row-gap: 2px; padding: 14px 0; border-top: 1px solid var(--hair); }
+  /* Each person: name on top, then Department, Mobile number and Role as labeled lines */
+  tr { display: flex; flex-direction: column; gap: 8px; padding: 16px 0; border-top: 1px solid var(--hair); }
   tr:first-child { border-top: 0; }
-  td { display: block; padding: 0; border: 0; font-size: 14px; }
-  td:nth-child(1) { grid-column: 1; grid-row: 1; font-size: 17px; }
-  td:nth-child(2) { grid-column: 1; grid-row: 2; color: var(--label-2); }
-  td:nth-child(3) { grid-column: 2; grid-row: 1; text-align: right; color: var(--label-2); }
-  td:nth-child(4) { grid-column: 1 / -1; grid-row: 3; color: var(--label-2); }
+  td { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 0; border: 0; font-size: 15px; color: var(--label); }
+  td::before { content: attr(data-label); flex: none; font-size: 12px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--label-3); }
+  td[data-label="Name"] { display: block; }
+  td[data-label="Name"]::before { content: none; }
+  td[data-label="Name"] .who { font-size: 18px; }
+  td.mono, td.muted { color: var(--label); }
+  td:not([data-label="Name"]) { text-align: right; }
   .empty { padding: 2em 0; }
   .legend { flex-wrap: wrap; gap: 8px 16px; }
 
