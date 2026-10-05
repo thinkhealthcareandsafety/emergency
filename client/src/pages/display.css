@@ -124,9 +124,10 @@ tr.off .who { color: var(--label-2); font-weight: 500; }
   .clock { font-size: 16px; }
   .offline, .alarm { flex-wrap: wrap; font-size: 14px; }
 
-  .tabs { display: flex; align-self: stretch; overflow-x: auto; scrollbar-width: none; }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tabs button { flex: 0 0 auto; padding: 9px 14px; font-size: 14px; white-space: nowrap; }
+  /* Three equal tabs that fit the screen: label on top, count underneath. No sideways scrolling. */
+  .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-self: stretch; padding: 3px; }
+  .tabs button { min-width: 0; justify-content: center; flex-wrap: wrap; gap: 4px 6px; padding: 8px 4px; font-size: 13px; line-height: 1.25; text-align: center; }
+  .tabs button span { width: 100%; text-align: center; }
 
   .grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .tv.board > *, .grid > *, .qr-card > * { min-width: 0; max-width: 100%; }
