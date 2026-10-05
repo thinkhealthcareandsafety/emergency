@@ -56,7 +56,7 @@ export default function Display() {
   const qrUrl = qr ? `${demoPunchUrl(qr, code)}&team=${current}` : null;
 
   return (
-    <div className="tv board">
+    <div className="tv board" style={{ '--team': team.color }}>
       <header className="hd">
         <div>
           <p className="kicker">{property.name} · Emergency Response Teams</p>
@@ -91,6 +91,7 @@ export default function Display() {
               setPaused(true);
             }}
           >
+            <i className="tdot" style={{ background: TEAMS[k].color }} />
             {TEAMS[k].label}
             <span>
               {membersOf(k).filter((m) => m.state === 'available').length}/{membersOf(k).length}
@@ -102,7 +103,10 @@ export default function Display() {
       <main className="grid">
         <section className="card table-card" aria-live="polite">
           <div className="card-head">
-            <h2>{team.label}</h2>
+            <h2>
+              <i className="tdot big" style={{ background: team.color }} />
+              {team.label}
+            </h2>
             <span className="sub">
               {onSite} of {rows.length} on site
             </span>
