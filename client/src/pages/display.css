@@ -103,11 +103,41 @@ tr.off .who { color: var(--label-2); font-weight: 500; }
   .tv *, .tv *::before, .tv *::after { animation: none !important; transition: none !important; }
 }
 
-/* Small screens: stack the table above the QR */
-@media (max-aspect-ratio: 1/1), (max-width: 900px) {
-  .tv.board { height: auto; min-height: 100vh; overflow: visible; padding: 20px 16px; }
-  .grid { grid-template-columns: 1fr; }
+/* Phones: one column. Each table row becomes a card, tabs scroll sideways, QR sits under the list. */
+@media (max-aspect-ratio: 1/1), (max-width: 700px) {
+  .tv { --u: 16px; }
+  .tv.board { height: auto; min-height: 100vh; overflow: visible; padding: 20px 16px 32px; gap: 16px; }
+  .hd { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .hd h1 { font-size: 30px; }
+  .kicker { font-size: 13px; }
+  .clock { font-size: 16px; }
+  .offline, .alarm { flex-wrap: wrap; font-size: 14px; }
+
+  .tabs { display: flex; align-self: stretch; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { flex: 0 0 auto; padding: 9px 14px; font-size: 14px; white-space: nowrap; }
+
+  .grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .tv.board > *, .grid > *, .qr-card > * { min-width: 0; max-width: 100%; }
+  .table-card { padding: 18px 16px; }
+  .card-head { flex-direction: column; align-items: flex-start; gap: 2px; margin-bottom: 4px; }
+  .card-head h2 { font-size: 22px; }
   .scroll { overflow: visible; }
-  .tabs { align-self: stretch; }
-  .tabs button { flex: 1; justify-content: center; padding: 0.6em 0.5em; font-size: 14px; }
+
+  thead { display: none; }
+  table, tbody { display: block; }
+  tr { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; row-gap: 2px; padding: 14px 0; border-top: 1px solid var(--hair); }
+  tr:first-child { border-top: 0; }
+  td { display: block; padding: 0; border: 0; font-size: 14px; }
+  td:nth-child(1) { grid-column: 1; grid-row: 1; font-size: 17px; }
+  td:nth-child(2) { grid-column: 1; grid-row: 2; color: var(--label-2); }
+  td:nth-child(3) { grid-column: 2; grid-row: 1; text-align: right; color: var(--label-2); }
+  td:nth-child(4) { grid-column: 1 / -1; grid-row: 3; color: var(--label-2); }
+  .empty { padding: 2em 0; }
+  .legend { flex-wrap: wrap; gap: 8px 16px; }
+
+  .qr-card { flex-direction: row; justify-content: flex-start; text-align: left; gap: 16px; padding: 16px; }
+  .qr { width: 120px; max-width: 120px; flex: none; padding: 8px; }
+  .qr-card h3 { margin: 0; font-size: 18px; }
+  .qr-card p { font-size: 14px; }
 }
