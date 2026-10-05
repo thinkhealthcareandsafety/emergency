@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { api, store } from '../api.js';
 import { fmtTime } from '../format.js';
 import { Icon, roleIcon } from '../components/Icons.jsx';
+import { TEAMS } from '../teams.js';
 import './display.css';
 import './punch.css';
 
@@ -12,6 +13,7 @@ export default function Punch() {
   const [params] = useSearchParams();
   const k = params.get('k') || '';
   const storeKey = `ert_demo_visitor_${code}`;
+  const team = TEAMS[params.get('team')]; // QR from a team tab only offers that team's roles
 
   const [info, setInfo] = useState(null);
   const [loadError, setLoadError] = useState('');
@@ -96,7 +98,7 @@ export default function Punch() {
         </div>
         <div>
           <div className="p-hotel">{info.property.name}</div>
-          <div className="p-sub">ERT Live · demo punch</div>
+          <div className="p-sub">{team ? team.label : 'ERT Live'} · demo punch</div>
         </div>
       </header>
 
@@ -135,7 +137,7 @@ export default function Punch() {
         <div className="p-field">
           <span>Your ERT role</span>
           <div className="p-roles">
-            {info.roles.map((r) => (
+            {(team ? info.roles.filter((r) => team.roles.includes(r.key)) : info.roles).map((r) => (
               <button
                 key={r.key}
                 type="button"
