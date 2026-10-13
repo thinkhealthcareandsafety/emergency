@@ -77,6 +77,8 @@ router.post('/:code/punch', guard, rateLimit, async (req, res) => {
 
   const settings = await getSettings();
   if (role && !settings.roles.some((r) => r.key === role)) throw new HttpError(400, 'Unknown role');
+  // Without a role the person would be punched in but missing from every team on the screen.
+  if (type === 'IN' && !role) throw new HttpError(400, 'Pick your team and role');
 
   let emp = visitorId ? await Employee.findOne({ empCode: String(visitorId), demoVisitor: true }) : null;
   if (!emp) {

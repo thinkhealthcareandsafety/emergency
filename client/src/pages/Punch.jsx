@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { api, store } from '../api.js';
 import { fmtTime } from '../format.js';
 import { Icon, roleIcon } from '../components/Icons.jsx';
-import { TEAMS } from '../teams.js';
+import { TEAMS, TEAM_KEYS } from '../teams.js';
 import './display.css';
 import './punch.css';
 
@@ -13,7 +13,6 @@ export default function Punch() {
   const [params] = useSearchParams();
   const k = params.get('k') || '';
   const storeKey = `ert_demo_visitor_${code}`;
-  const team = TEAMS[params.get('team')]; // QR from a team tab only offers that team's roles
 
   const [info, setInfo] = useState(null);
   const [loadError, setLoadError] = useState('');
@@ -21,6 +20,7 @@ export default function Punch() {
   const [visitorId, setVisitorId] = useState(() => store.get(storeKey));
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
+  const [teamKey, setTeamKey] = useState(() => (TEAMS[params.get('team')] ? params.get('team') : ''));
   const [state, setState] = useState('off');
   const [lastAt, setLastAt] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -34,6 +34,7 @@ export default function Punch() {
         if (d.me) {
           setName(d.me.name);
           setRole(d.me.role);
+          if (teamOf(d.me.role)) setTeamKey(teamOf(d.me.role));
           setState(d.me.state === 'available' ? 'available' : 'off');
           setLastAt(d.me.lastPunchAt);
         } else if (v) {
@@ -88,7 +89,18 @@ export default function Punch() {
   }
 
   const onDuty = state === 'available';
-  const canPunch = name.trim().length >= 2 && !busy;
+  const named = name.trim().length >= 2;
+  // Only teams whose roles exist in Admin → Roles; a punch-in needs a role or the person never shows on the board.
+  const teams = TEAM_KEYS.map((key) => ({ key, ...TEAMS[key], roles: info.roles.filter((r) => TEAMS[key].roles.includes(r.key)) })).filter(
+    (t) => t.roles.length
+  );
+  const team = teams.find((t) => t.key === teamKey);
+  const missing = !named ? 'Enter your name to punch in.' : !team ? 'Pick your team to punch in.' : !role ? 'Pick your role to punch in.' : '';
+
+  function pickTeam(t) {
+    setTeamKey(t.key);
+    setRole(t.roles.length === 1 ? t.roles[0].key : t.roles.some((r) => r.key === role) ? role : '');
+  }
 
   return (
     <Shell>
@@ -135,35 +147,68 @@ export default function Punch() {
         </label>
 
         <div className="p-field">
-          <span>Your ERT role</span>
-          <div className="p-roles">
-            {(team ? info.roles.filter((r) => team.roles.includes(r.key)) : info.roles).map((r) => (
+          <span id="p-team-label">Which team are you joining?</span>
+          <div className="p-teams" role="radiogroup" aria-labelledby="p-team-label">
+            {teams.map((t) => (
               <button
-                key={r.key}
+                key={t.key}
                 type="button"
-                className={`p-role ${role === r.key ? 'on' : ''}`}
-                style={{ '--role': r.color }}
-                onClick={() => setRole(role === r.key ? '' : r.key)}
-                aria-pressed={role === r.key}
+                role="radio"
+                aria-checked={teamKey === t.key}
+                className={`p-team ${teamKey === t.key ? 'on' : ''}`}
+                style={{ '--team': t.color }}
+                disabled={onDuty}
+                onClick={() => pickTeam(t)}
               >
-                <Icon name={roleIcon(r.key, r.label)} />
-                {r.label}
+                <i className="tdot" />
+                <span className="p-team-text">
+                  <b>{t.label}</b>
+                  <small>{t.roles.map((r) => r.label).join(' · ')}</small>
+                </span>
+                <span className="p-radio">
+                  <Icon name="check" strokeWidth={3} />
+                </span>
               </button>
             ))}
           </div>
         </div>
+
+        {team && team.roles.length > 1 && (
+          <div className="p-field">
+            <span id="p-role-label">Your role in {team.label}</span>
+            <div className="p-roles" role="radiogroup" aria-labelledby="p-role-label">
+              {team.roles.map((r) => (
+                <button
+                  key={r.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={role === r.key}
+                  className={`p-role ${role === r.key ? 'on' : ''}`}
+                  style={{ '--role': team.color }}
+                  disabled={onDuty}
+                  onClick={() => setRole(r.key)}
+                >
+                  <Icon name={roleIcon(r.key, r.label)} />
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {onDuty && <p className="p-note">Punch out first to change your team or role.</p>}
       </section>
 
       {error && <div className="p-error">{error}</div>}
 
       <div className="p-actions">
-        <button className="p-btn in" disabled={!canPunch || onDuty} onClick={() => punch('IN')}>
+        <button className="p-btn in" disabled={busy || onDuty || !!missing} onClick={() => punch('IN')}>
           <Icon name="enter" /> Punch in
         </button>
-        <button className="p-btn out" disabled={!canPunch || !onDuty} onClick={() => punch('OUT')}>
+        <button className="p-btn out" disabled={busy || !onDuty || !named} onClick={() => punch('OUT')}>
           <Icon name="exit" /> Punch out
         </button>
       </div>
+      {!onDuty && missing && <p className="p-hint">{missing}</p>}
 
       <p className="p-foot">
         Demo only. In production, punches arrive automatically from HONO HR — staff don’t need this page.
@@ -171,6 +216,8 @@ export default function Punch() {
     </Shell>
   );
 }
+
+const teamOf = (roleKey) => TEAM_KEYS.find((k) => TEAMS[k].roles.includes(roleKey));
 
 function Shell({ children }) {
   return (
