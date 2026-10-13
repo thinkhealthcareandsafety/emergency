@@ -1,18 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api, displayKey } from '../api.js';
 import QrCode, { demoPunchUrl, isLocalOnly } from '../components/QrCode.jsx';
 import { useLiveSnapshot, useNow } from '../hooks/useLiveSnapshot.js';
-import { fmtTime } from '../format.js';
-import { Icon } from '../components/Icons.jsx';
+import { fmtDay, fmtTime } from '../format.js';
+import { Icon, emergencyIcon, roleIcon } from '../components/Icons.jsx';
 import { TEAMS, TEAM_KEYS } from '../teams.js';
 import './display.css';
 
-const ROTATE_MS = 12_000;
-const RESUME_MS = 60_000;
-const STATUS = { available: 'Available', stale: 'Punch-out missing' };
+const ARRIVED_MS = 8_000; // how long a fresh punch-in stays highlighted
+const MAX_PIPS = 8;
 
-/** Wall screen: one tab per team, a table of its members, and a QR per team to punch in. */
+/**
+ * Wall screen and phone dashboard: whether every team is covered, then all three teams side by side
+ * (stacked on phones) with each person one tap from a call. Nothing rotates; everything is on one page.
+ */
 export default function Display() {
   const { code = 'MAIN' } = useParams();
   const [params] = useSearchParams();
@@ -25,158 +27,300 @@ export default function Display() {
   const { data, error, online, lastOk } = useLiveSnapshot(code, key);
   const now = useNow(1000);
   const qr = useDemoQr(code, key, params.get('qr') !== '0');
-  const [index, setIndex] = useState(() => Math.max(0, TEAM_KEYS.indexOf(params.get('team'))));
-  const [paused, setPaused] = useState(false);
+  const arrivals = useArrivals(data?.members);
   useKioskMode();
-
-  // Tabs rotate for the wall. A tap pauses rotation for a minute, then it resumes.
-  useEffect(() => {
-    if (paused) {
-      const t = setTimeout(() => setPaused(false), RESUME_MS);
-      return () => clearTimeout(t);
-    }
-    const t = setInterval(() => setIndex((i) => (i + 1) % TEAM_KEYS.length), ROTATE_MS);
-    return () => clearInterval(t);
-  }, [paused]);
 
   if (error?.status === 401) return <KeyPrompt onSubmit={(k) => (displayKey.set(k), setKey(k))} />;
   if (error?.status === 404)
     return <CenterMessage icon="alert" title="Unknown property" body={`No property is set up with the code “${code}”.`} />;
   if (!data) return <CenterMessage spinner title="Connecting" body="Fetching live team status…" />;
 
-  const { property, members, roles, emergency } = data;
+  const { property, members, roles, coverage, emergency } = data;
   const roleLabel = Object.fromEntries(roles.map((r) => [r.key, r.label]));
-  const membersOf = (k) => members.filter((m) => m.ertRoles.some((r) => TEAMS[k].roles.includes(r)));
-  const current = TEAM_KEYS[index];
-  const team = TEAMS[current];
-  const rows = membersOf(current).sort(
-    (a, b) => (a.state === 'available' ? 0 : 1) - (b.state === 'available' ? 0 : 1) || a.name.localeCompare(b.name)
-  );
-  const onSite = rows.filter((m) => m.state === 'available').length;
-  const qrUrl = qr ? `${demoPunchUrl(qr, code)}&team=${current}` : null;
+  const teams = TEAM_KEYS.map((k) => buildTeam(k, members, coverage));
+  const gaps = teams.flatMap((t) => t.gaps);
+  const tone = emergency ? 'emergency' : gaps.length ? 'short' : 'ok';
+  const qrUrl = qr ? demoPunchUrl(qr, code) : null;
+  const isNew = (m) => arrivals[m.empCode] && now - arrivals[m.empCode] < ARRIVED_MS;
+  // Wider columns for bigger teams, so the ERT list doesn't get cramped next to one-role teams.
+  const avg = Math.max(1, members.length / teams.length);
+  const cols = teams.map((t) => `minmax(0, ${Math.min(1.6, Math.max(1, t.people.length / avg)).toFixed(2)}fr)`).join(' ');
 
   return (
-    <div className="tv board" style={{ '--team': team.color }}>
-      <header className="hd">
-        <div>
-          <p className="kicker">{property.name} · Emergency Response Teams</p>
-          <h1>Team availability</h1>
+    <div className={`tv board tone-${tone}${online ? '' : ' is-offline'}`}>
+      <header className="top">
+        <div className="brand-mark" aria-hidden="true">
+          <Icon name="cross" />
         </div>
-        <div className="clock">{fmtTime(now)}</div>
+        <h1>{property.name}</h1>
+        <p className="live" role="status">
+          <i className={online ? 'on' : ''} />
+          <span>{online ? 'Live' : `Offline since ${lastOk ? fmtTime(lastOk) : 'earlier'}`}</span>
+        </p>
+        <time className="when" dateTime={now.toISOString()}>
+          <span className="clock">{fmtTime(now)}</span>
+          <span className="date">{fmtDay(now)}</span>
+        </time>
       </header>
 
-      {!online && (
-        <div className="offline">
-          <Icon name="alert" /> Connection lost. Showing data from {lastOk ? fmtTime(lastOk) : 'earlier'}.
-        </div>
-      )}
-      {emergency && (
-        <div className="alarm">
-          <span>{emergency.type} emergency in progress</span>
-          <span>
-            {emergency.accountedCount} of {emergency.toAccount} accounted for
-          </span>
-        </div>
-      )}
+      <Verdict tone={tone} gaps={gaps} teams={teams} emergency={emergency} assemblyPoint={property.assemblyPoint} />
 
-      <nav className="tabs" role="tablist" aria-label="Teams">
-        {TEAM_KEYS.map((k, i) => (
-          <button
-            key={k}
-            role="tab"
-            aria-selected={i === index}
-            className={i === index ? 'on' : ''}
-            onClick={() => {
-              setIndex(i);
-              setPaused(true);
-            }}
-          >
-            <i className="tdot" style={{ background: TEAMS[k].color }} />
-            {TEAMS[k].label}
-            <span>
-              {membersOf(k).filter((m) => m.state === 'available').length}/{membersOf(k).length}
+      <nav className="jump" aria-label="Jump to a team">
+        {teams.map((t) => (
+          <a key={t.key} href={`#team-${t.key}`} className={t.short ? 'short' : 'ok'} style={{ '--team': t.color }}>
+            <span className="jump-name">
+              <i className="tdot" />
+              {t.label}
             </span>
-          </button>
+            <span className="jump-state">
+              <Icon name={t.short ? 'alert' : 'check'} strokeWidth={2.5} />
+              {t.onSite.length}/{t.people.length}
+            </span>
+          </a>
         ))}
       </nav>
 
-      <main className="grid">
-        <section className="card table-card" aria-live="polite">
-          <div className="card-head">
-            <h2>
-              <i className="tdot big" style={{ background: team.color }} />
-              {team.label}
-            </h2>
-            <span className="sub">
-              {onSite} of {rows.length} on site
-            </span>
-          </div>
-          <div className="scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Department</th>
-                  <th>Mobile number</th>
-                  <th>Role</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((m) => (
-                  <tr key={m.empCode} className={m.state === 'available' ? '' : 'off'}>
-                    <td data-label="Name">
-                      <span className="who">
-                        <i className={`dot ${m.state}`} />
-                        <span className="who-text">
-                          <span className="who-name">{m.name}</span>
-                          <span className={`who-status ${m.state}`}>{STATUS[m.state] || 'Not available'}</span>
-                        </span>
-                      </span>
-                    </td>
-                    <td className="muted" data-label="Department">{m.department || '—'}</td>
-                    <td className="mono" data-label="Mobile number">{m.phone || '—'}</td>
-                    <td data-label="Role">{m.ertRoles.filter((r) => team.roles.includes(r)).map((r) => roleLabel[r] || r).join(', ')}</td>
-                  </tr>
-                ))}
-                {!rows.length && (
-                  <tr>
-                    <td colSpan={4} className="empty">
-                      No one is assigned to this team yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="legend">
-            <span>
-              <i className="dot available" /> On site
-            </span>
-            <span>
-              <i className="dot stale" /> Punch-out missing
-            </span>
-            <span>
-              <i className="dot" /> Not available
-            </span>
-          </div>
-        </section>
-
-        <aside className="card qr-card">
-          {qrUrl ? (
-            <>
-              <QrCode value={qrUrl} className="qr" />
-              <h3>Scan to punch in</h3>
-              <p>{team.label}</p>
-              {isLocalOnly(qrUrl) && <p className="warn">Points to localhost, so phones can’t open it.</p>}
-            </>
-          ) : (
-            <p>QR punching is off on this server.</p>
-          )}
-        </aside>
+      <main className="teams" style={{ '--cols': cols }}>
+        {teams.map((t) => (
+          <Team key={t.key} team={t} roleLabel={roleLabel} isNew={isNew} />
+        ))}
       </main>
 
+      <footer className="facts">
+        {property.assemblyPoint && (
+          <div className="fact">
+            <Icon name="pin" />
+            <span>
+              <small>Assembly point</small>
+              {property.assemblyPoint}
+            </span>
+          </div>
+        )}
+        {property.emergencyContacts.map((c) => (
+          <a key={`${c.label}${c.number}`} className="fact" href={telHref(c.number)}>
+            <Icon name="phone" />
+            <span>
+              <small>{c.label}</small>
+              {c.number}
+            </span>
+          </a>
+        ))}
+        {!property.assemblyPoint && !property.emergencyContacts.length && (
+          <p className="fact-hint">Add the assembly point and emergency numbers in Admin → Properties.</p>
+        )}
+        {qrUrl && (
+          <div className="qr-mini">
+            <QrCode value={qrUrl} />
+            <span>
+              Scan to
+              <br />
+              punch in
+              {isLocalOnly(qrUrl) && <em>Points to localhost, phones can’t open it</em>}
+            </span>
+          </div>
+        )}
+      </footer>
     </div>
   );
+}
+
+/** The one-line answer to "are we covered?", above everything else. */
+function Verdict({ tone, gaps, teams, emergency, assemblyPoint }) {
+  if (tone === 'emergency') {
+    return (
+      <section className="verdict" aria-live="assertive">
+        <Icon name={emergencyIcon(emergency.type)} className="v-icon" />
+        <div className="v-text">
+          <h2>{emergency.type} emergency in progress</h2>
+          <p>
+            {assemblyPoint ? `Go to the assembly point: ${assemblyPoint}.` : 'Go to the assembly point.'}
+            {emergency.note ? ` ${emergency.note}` : ''}
+          </p>
+        </div>
+        <p className="v-tally">
+          <b>{emergency.accountedCount}</b>
+          <span>of {emergency.toAccount} accounted for</span>
+        </p>
+      </section>
+    );
+  }
+  if (tone === 'short') {
+    const teamsShort = teams.filter((t) => t.short).length;
+    return (
+      <section className="verdict" aria-live="polite">
+        <Icon name="alert" className="v-icon" />
+        <div className="v-text">
+          <h2>Not ready</h2>
+          <p>
+            {teamsShort === 1 ? '1 team is' : `${teamsShort} teams are`} below the minimum on site.
+          </p>
+        </div>
+        <ul className="v-gaps">
+          {gaps.map((g) => (
+            <li key={g.key}>
+              <Icon name={roleIcon(g.key, g.label)} />
+              {g.label}
+              <b>
+                {g.available} of {g.required}
+              </b>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+  return (
+    <section className="verdict" aria-live="polite">
+      <Icon name="check" className="v-icon" strokeWidth={2.5} />
+      <div className="v-text">
+        <h2>All teams ready</h2>
+        <p>Every role has its minimum on site.</p>
+      </div>
+    </section>
+  );
+}
+
+function Team({ team, roleLabel, isNew }) {
+  const { onSite, unconfirmed, away } = team;
+  return (
+    <section className={`team ${team.short ? 'is-short' : 'is-ok'}`} id={`team-${team.key}`} style={{ '--team': team.color }} aria-labelledby={`team-${team.key}-h`}>
+      <header className="team-hd">
+        <h2 id={`team-${team.key}-h`}>
+          <i className="tdot" />
+          {team.label}
+        </h2>
+        <p className="team-state">
+          <Icon name={team.short ? 'alert' : 'check'} strokeWidth={2.5} />
+          {team.short ? `Short ${team.short}` : 'Covered'}
+        </p>
+        <p className="team-count">
+          <b>{onSite.length}</b> of {team.people.length} on site
+        </p>
+      </header>
+
+      {team.seats.length > 0 && (
+        <ul className="roles">
+          {team.seats.map((r) => (
+            <li key={r.key} className={r.available < r.required ? 'short' : ''} aria-label={`${r.label}: ${r.available} on site, minimum ${r.required}`}>
+              <Icon name={roleIcon(r.key, r.label)} />
+              <span className="role-name">{r.label}</span>
+              <Pips available={r.available} required={r.required} />
+              <span className="role-count">
+                {r.available}
+                <small>/{r.required}</small>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="people" aria-live="polite">
+        {!team.people.length && <p className="nobody">No one is assigned to this team yet.</p>}
+        {onSite.length + unconfirmed.length > 0 && (
+          <>
+            <h3>
+              On site <span>{onSite.length}</span>
+            </h3>
+            <ul>
+              {[...onSite, ...unconfirmed].map((m) => (
+                <Person key={m.empCode} m={m} team={team} roleLabel={roleLabel} fresh={isNew(m)} />
+              ))}
+            </ul>
+          </>
+        )}
+        {away.length > 0 && (
+          <>
+            <h3>
+              Not on site <span>{away.length}</span>
+            </h3>
+            <ul>
+              {away.map((m) => (
+                <Person key={m.empCode} m={m} team={team} roleLabel={roleLabel} />
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Person({ m, team, roleLabel, fresh }) {
+  const roles = m.ertRoles.filter((r) => team.roles.includes(r)).map((r) => roleLabel[r] || r).join(', ');
+  const meta = [roles, m.department].filter(Boolean).join(' · ');
+  const since = m.state === 'available' && !m.manual && m.lastPunchAt ? `Since ${fmtTime(m.lastPunchAt)}` : null;
+  const status =
+    m.state === 'stale' ? 'Punch-out missing' : m.state === 'available' ? null : m.manual && m.reason ? m.reason : null;
+  return (
+    <li className={`person ${m.state}${fresh ? ' fresh' : ''}`}>
+      <i className="state" aria-hidden="true" />
+      <span className="who-name">{m.name}</span>
+      {meta && <span className="who-meta">{meta}</span>}
+      {since && <span className="who-since">{since}</span>}
+      {status && <span className="who-status">{status}</span>}
+      {m.phone && <span className="who-phone">{m.phone}</span>}
+      {m.phone ? (
+        <a className="call" href={telHref(m.phone)} aria-label={`Call ${m.name} on ${m.phone}`}>
+          <Icon name="phone" />
+          <span>{m.phone}</span>
+        </a>
+      ) : (
+        <span className="call none">No number</span>
+      )}
+    </li>
+  );
+}
+
+/** One seat per required person: filled when someone is on site, hollow when the seat is empty. */
+function Pips({ available, required }) {
+  const total = Math.max(available, required);
+  const shown = Math.min(total, MAX_PIPS);
+  return (
+    <span className="pips" aria-hidden="true">
+      {Array.from({ length: shown }, (_, i) => (
+        <i key={i} className={i < available ? 'on' : ''} />
+      ))}
+      {total > MAX_PIPS && <em>+{total - MAX_PIPS}</em>}
+    </span>
+  );
+}
+
+function buildTeam(key, members, coverage) {
+  const def = TEAMS[key];
+  const people = members.filter((m) => m.ertRoles.some((r) => def.roles.includes(r)));
+  const seats = def.roles.map((r) => coverage.find((c) => c.key === r)).filter(Boolean);
+  const gaps = seats.filter((r) => r.available < r.required);
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  return {
+    key,
+    ...def,
+    people,
+    seats,
+    gaps,
+    short: gaps.reduce((n, g) => n + g.required - g.available, 0),
+    onSite: people.filter((m) => m.state === 'available').sort(byName),
+    unconfirmed: people.filter((m) => m.state === 'stale').sort(byName),
+    away: people.filter((m) => m.state !== 'available' && m.state !== 'stale').sort(byName),
+  };
+}
+
+const telHref = (n) => `tel:${String(n).replace(/[^\d+]/g, '')}`;
+
+/** Remembers when each person flipped to on site, so the screen can mark fresh arrivals for a few seconds. */
+function useArrivals(members) {
+  const prev = useRef(null);
+  const [arrivals, setArrivals] = useState({});
+  useEffect(() => {
+    if (!members) return;
+    const inNow = new Set(members.filter((m) => m.state === 'available').map((m) => m.empCode));
+    const fresh = prev.current ? [...inNow].filter((c) => !prev.current.has(c)) : [];
+    prev.current = inNow;
+    if (fresh.length) {
+      const at = new Date();
+      setArrivals((a) => ({ ...a, ...Object.fromEntries(fresh.map((c) => [c, at])) }));
+    }
+  }, [members]);
+  return arrivals;
 }
 
 function CenterMessage({ title, body, spinner, icon }) {

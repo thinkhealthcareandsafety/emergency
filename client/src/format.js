@@ -4,6 +4,9 @@ export const fmtTime = (d) =>
 export const fmtClock = (d) =>
   d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+export const fmtDay = (d) =>
+  new Date(d).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
 export const fmtDate = (d) =>
   new Date(d).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
